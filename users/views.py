@@ -1,9 +1,12 @@
 from django.contrib.auth import authenticate
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
 from .serializers import RegisterSerializer
+from rest_framework.response import Response
+from .serializers import UserSerializer
 
 @api_view(['POST'])
 def register(request):
@@ -24,3 +27,10 @@ def login(request):
         return Response({'token': token.key}, status=status.HTTP_200_OK)
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_users(request):
+    users = User.objects.all()
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
