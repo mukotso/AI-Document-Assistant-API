@@ -156,3 +156,33 @@ def update_document_status(request, id):
         return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_documents(request):
+    try:
+        user = request.user
+        # Retrieve all documents for the logged-in user
+        documents = Document.objects.filter(user=user)
+        # Construct the response data
+        response_data = []
+        for document in documents:
+            try:
+                # Retrieve the content associated with the document
+                content = Content.objects.get(document=document)
+                doc_data = {
+                    "document_id": document.id,
+                    "file_name": document.file_name,
+                    "status": document.status,
+                    "upload_date": document.upload_date.isoformat(),  
+                    "original_content": content.original_content,
+                    "improved_content": content.improved_content or ''  
+                }
+                response_data.append(doc_data)
+            except Content.DoesNotExist:
+                continue
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
