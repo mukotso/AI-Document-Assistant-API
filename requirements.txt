@@ -9,4 +9,4 @@ spacy
 textblob
 textstat
 language_tool_python
-
+django-cors-headers
