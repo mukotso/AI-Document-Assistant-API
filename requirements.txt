@@ -5,3 +5,8 @@ djangorestframework-simplejwt
 python-docx
 PyPDF2
 django-cors-headers
+spacy
+textblob
+textstat
+language_tool_python
+
