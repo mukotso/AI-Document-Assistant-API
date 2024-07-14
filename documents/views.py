@@ -130,3 +130,29 @@ def improve_document(request, id):
         return Response({"error": "Content not found for this document"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_document_status(request, id):
+    try:
+        # Retrieve the document by ID
+        document = Document.objects.get(id=id)
+        
+        # Get the new status from the request data
+        new_status = request.data.get('status')
+        
+        if not new_status:
+            return Response({"error": "No status provided"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update the document status
+        document.status = new_status
+        document.save()
+        
+        
+        
+        return Response({'message':"Document Status Updated Successfully"}, status=status.HTTP_200_OK)
+    except Document.DoesNotExist:
+        return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
