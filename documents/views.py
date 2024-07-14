@@ -6,6 +6,8 @@ from .models import Document, Content
 from docx import Document as DocxDocument
 import PyPDF2
 import os
+from .nlp_utils import improve_document_content
+
 
 # maximum file size (10MB)
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -83,6 +85,42 @@ def get_document(request, id):
             "upload_date": document.upload_date.isoformat(),  
             "original_content": content.original_content,
             "improved_content": content.improved_content or ''  
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Document.DoesNotExist:
+        return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Content.DoesNotExist:
+        return Response({"error": "Content not found for this document"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def improve_document(request, id):
+    try:
+       
+        document = Document.objects.get(id=id)
+        
+        content = Content.objects.get(document=document)
+        
+        # NLP
+        improved_content, suggestions = improve_document_content(content.original_content)
+        
+        # Save the improved content back to the database
+        content.improved_content = improved_content
+        content.save()
+        
+        
+        response_data = {
+            "document_id": document.id,
+            "file_name": document.file_name,
+            "status": document.status,
+            "upload_date": document.upload_date.isoformat(), 
+            "original_content": content.original_content,
+            "improved_content": content.improved_content,
+            "suggestions": suggestions  
         }
         
         return Response(response_data, status=status.HTTP_200_OK)
