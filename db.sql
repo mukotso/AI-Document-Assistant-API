@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS contents (
     document_id INT NOT NULL,
     original_content TEXT NOT NULL,
     improved_content TEXT,
+    suggestions TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
