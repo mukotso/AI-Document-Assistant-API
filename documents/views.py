@@ -10,7 +10,7 @@ import os
 from .nlp_utils import improve_document_content
 
 
-# maximum file size (10MB)
+#  set max Size
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 @api_view(['POST'])
@@ -22,7 +22,7 @@ def upload_document(request):
     if not file:
         return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Check file size
+    
     if file.size > MAX_FILE_SIZE:
         return Response({"error": "File size exceeds the limit of 10MB"}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -34,7 +34,7 @@ def upload_document(request):
         # Create a new document entry with file name
         document = Document.objects.create(
             user=user,
-            file_name=file.name  # Save the original file name
+            file_name=file.name 
         )
         
         # Extract content from file
@@ -52,7 +52,7 @@ def upload_document(request):
         else:
             return Response({"error": "Unsupported file format"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save the content in the database
+        # Save 
         Content.objects.create(document=document, original_content=original_content)
         
         # Construct response data
@@ -73,7 +73,7 @@ def upload_document(request):
 @permission_classes([IsAuthenticated])
 def get_document(request, id):
     try:
-        # Retrieve the document by ID
+        # Retrieve by ID
         document = Document.objects.get(id=id)
         # Retrieve the content associated with the document
         content = Content.objects.get(document=document)
@@ -109,7 +109,7 @@ def improve_document(request, id):
         # NLP
         improved_content, suggestions = improve_document_content(content.original_content)
         
-        # Save the improved content back to the database
+        # Save 
         content.improved_content = improved_content
         content.suggestions = suggestions
         content.save()
@@ -138,7 +138,7 @@ def improve_document(request, id):
 @permission_classes([IsAuthenticated])
 def update_document_status(request, id):
     try:
-        # Retrieve the document by ID
+        # Retrieve  by ID
         document = Document.objects.get(id=id)
         
         # Get the new status from the request data
@@ -166,7 +166,7 @@ def get_all_documents(request):
         user = request.user
         # Retrieve all documents for the logged-in user
         documents = Document.objects.filter(user=user)
-        # Construct the response data
+        
         response_data = []
         for document in documents:
             try:
