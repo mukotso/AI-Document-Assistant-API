@@ -110,6 +110,7 @@ def improve_document(request, id):
         
         # Save the improved content back to the database
         content.improved_content = improved_content
+        content.suggestions = suggestions
         content.save()
         
         
