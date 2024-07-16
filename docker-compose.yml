@@ -6,9 +6,9 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     environment:
-      MYSQL_DATABASE: mydatabase
-      MYSQL_USER: myuser
-      MYSQL_PASSWORD: mypassword
+      MYSQL_DATABASE: documentAssistant
+      MYSQL_USER: kelvin
+      MYSQL_PASSWORD: documentAssistant
       MYSQL_ROOT_PASSWORD: rootpassword
     ports:
       - "3306:3306"
@@ -29,9 +29,9 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_NAME: mydatabase
-      DATABASE_USER: myuser
-      DATABASE_PASSWORD: mypassword
+      DATABASE_NAME: documentAssistant
+      DATABASE_USER: kelvin
+      DATABASE_PASSWORD: documentAssistant
       DATABASE_HOST: db
       DATABASE_PORT: 3306
 

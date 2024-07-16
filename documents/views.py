@@ -3,13 +3,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Document, Content
+from django.contrib.auth.models import User 
 from docx import Document as DocxDocument
 import PyPDF2
 import os
 from .nlp_utils import improve_document_content
 
 
-# maximum file size (10MB)
+#  set max Size
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 @api_view(['POST'])
@@ -21,7 +22,7 @@ def upload_document(request):
     if not file:
         return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
     
-    # Check file size
+    
     if file.size > MAX_FILE_SIZE:
         return Response({"error": "File size exceeds the limit of 10MB"}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -33,7 +34,7 @@ def upload_document(request):
         # Create a new document entry with file name
         document = Document.objects.create(
             user=user,
-            file_name=file.name  # Save the original file name
+            file_name=file.name 
         )
         
         # Extract content from file
@@ -51,7 +52,7 @@ def upload_document(request):
         else:
             return Response({"error": "Unsupported file format"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Save the content in the database
+        # Save 
         Content.objects.create(document=document, original_content=original_content)
         
         # Construct response data
@@ -72,7 +73,7 @@ def upload_document(request):
 @permission_classes([IsAuthenticated])
 def get_document(request, id):
     try:
-        # Retrieve the document by ID
+        # Retrieve by ID
         document = Document.objects.get(id=id)
         # Retrieve the content associated with the document
         content = Content.objects.get(document=document)
@@ -108,8 +109,9 @@ def improve_document(request, id):
         # NLP
         improved_content, suggestions = improve_document_content(content.original_content)
         
-        # Save the improved content back to the database
+        # Save 
         content.improved_content = improved_content
+        content.suggestions = suggestions
         content.save()
         
         
@@ -136,7 +138,7 @@ def improve_document(request, id):
 @permission_classes([IsAuthenticated])
 def update_document_status(request, id):
     try:
-        # Retrieve the document by ID
+        # Retrieve  by ID
         document = Document.objects.get(id=id)
         
         # Get the new status from the request data
@@ -164,7 +166,7 @@ def get_all_documents(request):
         user = request.user
         # Retrieve all documents for the logged-in user
         documents = Document.objects.filter(user=user)
-        # Construct the response data
+        
         response_data = []
         for document in documents:
             try:
@@ -186,3 +188,24 @@ def get_all_documents(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_statistics(request):
+    try:
+        total_users = User.objects.count()
+        total_uploaded_documents = Document.objects.count()
+        total_approved_documents = Document.objects.filter(status='approved').count()
+        total_rejected_documents = Document.objects.filter(status='rejected').count()
+        total_documents = Document.objects.count()
+        
+        response_data = {
+            'total_users': total_users,
+            'total_uploaded_documents': total_uploaded_documents,
+            'total_approved_documents': total_approved_documents,
+            'total_rejected_documents': total_rejected_documents,
+            'total_documents': total_documents
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

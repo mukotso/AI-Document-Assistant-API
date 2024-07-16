@@ -8,22 +8,17 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory in the container
 WORKDIR /app
 
+# Install Java and other dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        build-essential \
+        default-jre \
         default-mysql-client \
+        build-essential \
         python3-dev \
         default-libmysqlclient-dev \
         pkg-config \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.20+8/OpenJDK11U-jdk_x64_linux_hotspot_11.0.20_8.tar.gz -o openjdk-11_linux-x64_bin.tar.gz \
-    && tar -xzf openjdk-11_linux-x64_bin.tar.gz -C /opt \
-    && ln -s /opt/jdk-11/bin/java /usr/bin/java \
-    && ln -s /opt/jdk-11/bin/javac /usr/bin/javac \
-    && rm openjdk-11_linux-x64_bin.tar.gz
-
-
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt /app/
