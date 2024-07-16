@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Document, Content
+from django.contrib.auth.models import User 
 from docx import Document as DocxDocument
 import PyPDF2
 import os
@@ -187,3 +188,24 @@ def get_all_documents(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_statistics(request):
+    try:
+        total_users = User.objects.count()
+        total_uploaded_documents = Document.objects.count()
+        total_approved_documents = Document.objects.filter(status='approved').count()
+        total_rejected_documents = Document.objects.filter(status='rejected').count()
+        total_documents = Document.objects.count()
+        
+        response_data = {
+            'total_users': total_users,
+            'total_uploaded_documents': total_uploaded_documents,
+            'total_approved_documents': total_approved_documents,
+            'total_rejected_documents': total_rejected_documents,
+            'total_documents': total_documents
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
