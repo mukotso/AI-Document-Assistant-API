@@ -6,6 +6,9 @@ from .models import Document, Content
 from django.contrib.auth.models import User 
 from docx import Document as DocxDocument
 import PyPDF2
+from io import BytesIO
+from django.http import HttpResponse
+from django.conf import settings
 import os
 from .nlp_utils import improve_document_content
 
@@ -209,3 +212,63 @@ def get_statistics(request):
         return Response(response_data, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def generate_word_document(request, document_id):
+    try:
+        # Get the document and its improved content from the database
+        doc = Document.objects.get(id=document_id)
+        content = Content.objects.get(document=doc)
+        
+        # Get the improved content
+        improved_content = content.improved_content or '' 
+        
+        # Define the organization name and document title
+        organization_name = "AI DOCUMENT ASSISTANT"
+        document_title = doc.file_name  
+
+        # Load the template
+        template_path = os.path.join(settings.BASE_DIR, 'templates', 'template.docx')
+        
+        if not os.path.exists(template_path):
+            return Response({"error": "Template file not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        template = DocxDocument(template_path)
+
+        # Replace placeholders in the template with actual content
+        for paragraph in template.paragraphs:
+            if '<<ORGANIZATION_NAME>>' in paragraph.text:
+                paragraph.text = paragraph.text.replace('<<ORGANIZATION_NAME>>', organization_name)
+            if '<<DOCUMENT_TITLE>>' in paragraph.text:
+                paragraph.text = paragraph.text.replace('<<DOCUMENT_TITLE>>', document_title)
+            if '<<IMPROVED_CONTENT>>' in paragraph.text:
+                # To avoid text replacement issues with formatting, handle in runs
+                inline_shapes = paragraph.runs
+                for run in inline_shapes:
+                    if '<<IMPROVED_CONTENT>>' in run.text:
+                        run.text = run.text.replace('<<IMPROVED_CONTENT>>', improved_content)
+
+        # Save the document to a BytesIO object
+        file_stream = BytesIO()
+        template.save(file_stream)
+        file_stream.seek(0)
+
+        # Create the HTTP response
+        response = HttpResponse(file_stream, content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        response['Content-Disposition'] = f'attachment; filename={doc.file_name}_optimized.docx'
+
+        return response
+
+    except Document.DoesNotExist:
+        return Response({"error": "Document not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Content.DoesNotExist:
+        return Response({"error": "Content not found for this document"}, status=status.HTTP_404_NOT_FOUND)
+    except FileNotFoundError:
+        return Response({"error": "Template file not found"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
