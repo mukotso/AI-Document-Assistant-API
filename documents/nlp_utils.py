@@ -1,15 +1,19 @@
 import re
 import json
 import spacy
-from textblob import TextBlob
 import textstat
 import language_tool_python
+from transformers import pipeline
+from textblob import TextBlob
 
 # spaCy model
 nlp = spacy.load("en_core_web_sm")
 
 # LanguageTool
 tool = language_tool_python.LanguageTool('en-US')
+
+# Transformer models
+grammar_corrector = pipeline('text2text-generation', model='pszemraj/flan-t5-large-grammar-synthesis')
 
 # Load configuration from JSON file
 def load_config(file_path):
@@ -22,7 +26,9 @@ complex_words = config.get('complex_words', {})
 grammar_mistakes = config.get('grammar_mistakes', {})
 ner_suggestions = config.get('ner_suggestions', {})
 casual_words = config.get('casual_words', [])
+ambiguous_words = config.get('ambiguous_words', {})
 
+# NLP Analysis
 def analyze_document(text):
     doc = nlp(text)
     suggestions = []
@@ -30,7 +36,7 @@ def analyze_document(text):
     # Analyze sentences
     for sent in doc.sents:
         suggestions.extend(analyze_sentence(sent))
-    
+
     # Named Entity Recognition
     ner_suggestions = analyze_entities(doc)
     suggestions.extend(ner_suggestions)
@@ -45,78 +51,102 @@ def analyze_sentence(sentence):
         suggestions.append(f"Consider using active voice in: '{sentence.text}'")
 
     # Check for long sentences
-    if len(sentence.text.split()) > 20:  # Improved to check word count
+    if len(sentence) > 20:  # Improved to check token count
         suggestions.append(f"Consider breaking down the long sentence: '{sentence.text}'")
 
     # Check for syntax and grammar issues
     syntax_suggestions = check_syntax(sentence)
     suggestions.extend(syntax_suggestions)
-    
+
     return suggestions
 
 def is_passive(sentence):
     # Enhanced detection using spaCy
     for token in sentence:
-        if token.dep_ in ["auxpass", "nsubjpass"]:  
+        if token.dep_ in ["auxpass", "nsubjpass"]:
             return True
     return False
 
 def check_syntax(sentence):
     suggestions = []
+
     # Check for common grammar mistakes using LanguageTool
     matches = tool.check(sentence.text)
     for match in matches:
         for mistake, replacement in grammar_mistakes.items():
             if mistake in match.message.lower():
                 suggestions.append(f"Consider replacing '{mistake}' with '{replacement}'")
-    
+
     return suggestions
 
 def analyze_entities(doc):
     suggestions = []
+
     # Enhanced NER suggestions
     for ent in doc.ents:
         if ent.label_ in ner_suggestions:
             for term, suggestion in ner_suggestions[ent.label_].items():
                 if ent.text.lower() == term:
                     suggestions.append(f"{suggestion} for '{ent.text}'")
-    
+
     return suggestions
 
+# Grammar and Spelling Correction
+def fix_grammar_and_spelling(text):
+    # Correct grammar using transformer-based model
+    corrected_grammar = grammar_corrector(text, max_length=512)[0]['generated_text']
+
+    # Correct spelling using TextBlob
+    blob = TextBlob(corrected_grammar)
+    corrected_text = str(blob.correct())
+
+    # Gather suggestions from LanguageTool
+    matches = tool.check(corrected_text)
+    suggestions = [match.message for match in matches]
+
+    return corrected_text, suggestions
+
+# Style and Tone Analysis
 def analyze_style_and_tone(text):
-    doc = nlp(text)
     suggestions = []
-    
+
     # Check for overly casual language
-    for token in doc:
+    for token in nlp(text):
         if token.text.lower() in casual_words:
             suggestions.append(f"Consider replacing '{token.text}' with a more formal term.")
-    
-    # Analyze sentiment using TextBlob for tone detection
-    blob = TextBlob(text)
-    if blob.sentiment.polarity < -0.5: 
-        suggestions.append("The text has a negative tone. Consider making it more positive.")
-    
+
     return suggestions
 
+# Readability Analysis
 def readability_analysis(text):
     suggestions = []
-    
+
+    # Flesch-Kincaid Grade Level
+    flesch_kincaid_grade = textstat.flesch_kincaid_grade(text)
+    if flesch_kincaid_grade > 8:
+        suggestions.append("The text is written at a high grade level. Consider simplifying your language.")
+
+    # Gunning-Fog Index
+    gunning_fog_index = textstat.gunning_fog(text)
+    if gunning_fog_index > 10:
+        suggestions.append("The text is difficult to read. Consider simplifying your sentences and using more common words.")
+
+    # Flesch Reading Ease
     flesch_score = textstat.flesch_reading_ease(text)
     if flesch_score < 60:
         suggestions.append("The text is difficult to read. Consider simplifying your sentences and using more common words.")
-    
-    # Additional readability metrics
+
+    # SMOG Index
     smog_index = textstat.smog_index(text)
     if smog_index > 12:
         suggestions.append("The text may be too complex. Consider simplifying it for easier comprehension.")
-    
+
     return suggestions
 
 def improve_clarity_and_conciseness(text):
     doc = nlp(text)
     suggestions = []
-    
+
     # Check for redundant phrases
     for phrase, replacement in redundant_phrases.items():
         if phrase in text:
@@ -127,23 +157,8 @@ def improve_clarity_and_conciseness(text):
         if token.text.lower() in complex_words:
             replacement = complex_words[token.text.lower()]
             suggestions.append(f"Consider replacing '{token.text}' with '{replacement}'.")
-    
+
     return suggestions
-
-def fix_grammar_and_spelling(text):
-    # Correct grammar using LanguageTool
-    matches = tool.check(text)
-    corrected_text = tool.correct(text)
-
-    # Correct spelling using TextBlob
-    blob = TextBlob(corrected_text)
-    corrected_text = str(blob.correct())
-
-    suggestions = []
-    for match in matches:
-        suggestions.append(match.message)
-
-    return corrected_text, suggestions
 
 def improve_document_content(original_content):
     # First, fix grammar and spelling
